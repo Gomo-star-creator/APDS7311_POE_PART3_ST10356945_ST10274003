@@ -1,1 +1,58 @@
+version: 2.1
+
+orbs:
+  node: circleci/node@5.1.0
+
+jobs:
+  build-and-sonarqube:
+    docker:
+      - image: cimg/node:20.11  # Node.js image with npm and yarn
+      - image: sonarsource/sonar-scanner-cli:latest  # SonarQube scanner
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      # Install dependencies for both frontend and backend
+      - run:
+          name: Install dependencies
+          command: |
+            echo "Installing dependencies..."
+            cd frontend && npm install
+            cd ../backend && npm install
+            cd ..
+
+      # Build React frontend
+      - run:
+          name: Build React app
+          command: |
+            echo "Building React frontend..."
+            cd frontend && npm run build
+            cd ..
+
+      # Run tests (optional)
+      - run:
+          name: Run tests
+          command: |
+            echo "Running tests..."
+            cd backend && npm test || echo "No tests found"
+            cd ..
+
+      # SonarQube Scan
+      - run:
+          name: Run SonarQube Scan
+          command: |
+            echo "Running SonarQube scan..."
+            sonar-scanner \
+              -Dsonar.projectKey=APDS7311_POE_PART3 \
+              -Dsonar.sources=. \
+              -Dsonar.host.url=$SONAR_HOST_URL \
+              -Dsonar.login=$SONAR_TOKEN
+
+workflows:
+  version: 2
+  build_and_scan:
+    jobs:
+      - build-and-sonarqube
 

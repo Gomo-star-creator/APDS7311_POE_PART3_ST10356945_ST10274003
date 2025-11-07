@@ -45,8 +45,9 @@ jobs:
           command: |
             echo "Running SonarQube scan..."
             sonar-scanner \
-              -Dsonar.projectKey=Gomo-star-creator_APDS7311_POE_PART3_ST10356945_ST10274003
-              -Dsonar.sources=src\
+              -Dsonar.projectKey=Gomo-star-creator_APDS7311_POE_PART3_ST10356945_ST10274003 \
+              -Dsonar.organization=Gomo-star-creator \
+              -Dsonar.sources=. \
               -Dsonar.host.url=$SONAR_HOST_URL \
               -Dsonar.login=$SONAR_TOKEN
 

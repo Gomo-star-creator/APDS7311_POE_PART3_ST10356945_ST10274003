@@ -1,6 +1,5 @@
-// src/pages/Customer/CreatePayment.js
 import React, { useState } from 'react';
-import axios from 'axios';
+import { createPayment } from '../../api'; // <-- use the api function
 
 function CreatePayment() {
   const [amount, setAmount] = useState('');
@@ -10,46 +9,37 @@ function CreatePayment() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const token = localStorage.getItem('token');
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
+    if (!token) {
+      setError('You must be logged in to make a payment.');
+      return;
+    }
+
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setError('You must be logged in to make a payment.');
-        return;
-      }
+      const payment = {
+        amount: parseFloat(amount),
+        currency,
+        provider: 'SWIFT', // fixed for now
+        payeeAccount,
+        swiftCode,
+      };
 
-      const res = await axios.post(
-        'https://localhost:3000/api/payments',
-        {
-          amount: parseFloat(amount),
-          currency,
-          provider: 'SWIFT', // fixed for now
-          payeeAccount,
-          swiftCode
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
+      const data = await createPayment(token, payment);
+      setSuccess(`Payment created! ID: ${data.id}, Status: ${data.status}`);
 
-      setSuccess(`Payment created! ID: ${res.data.id}, Status: ${res.data.status}`);
+      // Clear form
       setAmount('');
       setPayeeAccount('');
       setSwiftCode('');
     } catch (err) {
       console.error(err);
-      if (err.response && err.response.data) {
-        setError(err.response.data.error || JSON.stringify(err.response.data));
-      } else {
-        setError('Server error. Make sure backend is running.');
-      }
+      setError(err.message || 'Server error. Make sure backend is running.');
     }
   };
 
@@ -58,6 +48,7 @@ function CreatePayment() {
       <h2>Create Payment</h2>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       {success && <p style={{ color: 'green' }}>{success}</p>}
+
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '10px' }}>
           <label>Amount:</label>
@@ -70,6 +61,7 @@ function CreatePayment() {
             style={{ width: '100%', padding: '8px' }}
           />
         </div>
+
         <div style={{ marginBottom: '10px' }}>
           <label>Currency:</label>
           <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ width: '100%', padding: '8px' }}>
@@ -82,6 +74,7 @@ function CreatePayment() {
             <option value="NZD">NZD</option>
           </select>
         </div>
+
         <div style={{ marginBottom: '10px' }}>
           <label>Payee Account:</label>
           <input
@@ -92,6 +85,7 @@ function CreatePayment() {
             style={{ width: '100%', padding: '8px' }}
           />
         </div>
+
         <div style={{ marginBottom: '10px' }}>
           <label>SWIFT Code:</label>
           <input
@@ -102,6 +96,7 @@ function CreatePayment() {
             style={{ width: '100%', padding: '8px' }}
           />
         </div>
+
         <button type="submit" style={{ padding: '10px 20px' }}>Pay Now</button>
       </form>
     </div>

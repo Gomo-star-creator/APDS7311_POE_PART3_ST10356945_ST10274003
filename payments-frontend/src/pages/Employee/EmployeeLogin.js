@@ -13,29 +13,37 @@ function EmployeeLogin() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:3000/api/auth/login', {
+      // Make sure to use https if your backend is HTTPS
+      const res = await fetch('https://localhost:3000/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }), // only username for employee
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Login failed');
+        setError(data.error || 'Invalid response from server.');
         return;
       }
 
-      // Store token and role in localStorage
+      if (data.role !== 'employee') {
+        setError('Not an employee account.');
+        return;
+      }
+
+      // Save JWT token
       localStorage.setItem('token', data.token);
       localStorage.setItem('role', data.role);
       localStorage.setItem('username', data.username);
 
-      alert(`Welcome, ${data.username}!`);
+      // Redirect to Employee Dashboard
       navigate('/employee/dashboard');
     } catch (err) {
       console.error(err);
-      setError('Cannot connect to server. Make sure backend is running.');
+      setError('Cannot connect to server. Make sure backend is running and you are using correct protocol (HTTP/HTTPS).');
     }
   };
 

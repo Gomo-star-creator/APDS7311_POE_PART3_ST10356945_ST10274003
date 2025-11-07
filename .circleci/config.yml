@@ -1,52 +1,35 @@
 version: 2.1
 
 orbs:
-  node: circleci/node@5.1.0
+  node: circleci/node@5.0
 
 jobs:
-  build-and-sonarqube:
+  sonar_scan:
     docker:
-      - image: cimg/node:20.11  # Node.js image with npm and yarn
-      - image: sonarsource/sonar-scanner-cli:latest  # SonarQube scanner
-
-    working_directory: ~/repo
-
+      - image: circleci/node:20
     steps:
       - checkout
-
-      # Install dependencies for both frontend and backend
       - run:
-          name: Install dependencies
+          name: Install Dependencies
           command: |
-            echo "Installing dependencies..."
-            cd frontend && npm install
-            cd ../backend && npm install
-            cd ..
-
-      # Build React frontend
+            cd payments-backend
+            npm install
       - run:
-          name: Build React app
+          name: Install SonarScanner
           command: |
-            echo "Building React frontend..."
-            cd frontend && npm run build
-            cd ..
-
-    
-
-      # SonarQube Scan
+            npm install -g sonar-scanner
       - run:
           name: Run SonarQube Scan
           command: |
             sonar-scanner \
-              -Dsonar.projectKey=Gomo-star-creator_APDS7311_POE_PART3_ST10356945_ST10274003 \
-              -Dsonar.organization=Gomo-star-creator \
+              -Dsonar.organization=$SONAR_ORG \
+              -Dsonar.projectKey=$SONAR_PROJECT_KEY \
               -Dsonar.sources=. \
-              -Dsonar.host.url=${SONAR_HOST_URL} \
-              -Dsonar.login=${SONAR_TOKEN}
+              -Dsonar.host.url=https://sonarcloud.io \
+              -Dsonar.login=$SONAR_TOKEN
 
 workflows:
   version: 2
-  build_and_scan:
+  build_and_sonar:
     jobs:
-      - build-and-sonarqube
-
+      - sonar_scan

@@ -19,8 +19,9 @@ app.use(express.json());
 
 // CORS: restrict to your front-end origin only
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGIN || '*'
+  origin: 'http://localhost:3001'
 }));
+
 
 // rate limiter (simple, tune as needed)
 const limiter = rateLimit({
@@ -54,6 +55,5 @@ if (process.env.SSL_KEY_PATH && process.env.SSL_CERT_PATH && fs.existsSync(proce
 } else {
   http.createServer(app).listen(PORT, () => {
     console.log(`HTTP server running at http://localhost:${PORT}`);
-    console.warn('SSL certs not found. For compliance you should run with HTTPS (see README instructions).');
   });
 }

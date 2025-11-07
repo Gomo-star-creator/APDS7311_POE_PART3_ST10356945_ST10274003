@@ -1,3 +1,4 @@
+// routes/auth.js
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -14,6 +15,7 @@ const idRegex = /^\d{13}$/;               // South African ID (13 digits)
 const accountRegex = /^\d{6,24}$/;       
 const passwordRegex = /^(?=.{8,})(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*\W).+$/;
 
+// --------------------- CUSTOMER REGISTER ---------------------
 router.post('/register', [
   check('fullName').matches(nameRegex).withMessage('Invalid full name'),
   check('idNumber').matches(idRegex).withMessage('Invalid ID number'),
@@ -30,7 +32,7 @@ router.post('/register', [
     const existing = await db.query('SELECT id FROM customers WHERE account_number = $1', [accountNumber]);
     if (existing.rows.length) return res.status(400).json({ error: 'Account already registered' });
 
-    // create a username from name (simple) and ensure uniqueness
+    // create a unique username from full name
     let usernameBase = fullName.toLowerCase().replace(/\s+/g, '');
     let username = usernameBase;
     let i = 0;
@@ -59,38 +61,54 @@ router.post('/register', [
   }
 });
 
+// --------------------- LOGIN (CUSTOMER OR EMPLOYEE) ---------------------
 router.post('/login', [
-  check('username').optional().isString(),
-  check('accountNumber').optional().isString(),
-  check('password').exists()
+  check('password').exists().withMessage('Password is required')
 ], async (req, res) => {
-  const { username, accountNumber, password } = req.body;
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  const { accountNumber, username, password } = req.body;
 
   try {
-    // If accountNumber present -> try customer login
+    // --- CUSTOMER LOGIN ---
     if (accountNumber) {
-      const q = await db.query('SELECT id, username, password_hash FROM customers WHERE username=$1 AND account_number=$2',
-        [username, accountNumber]);
+      const q = await db.query(
+        'SELECT id, username, password_hash FROM customers WHERE account_number=$1',
+        [accountNumber]
+      );
       if (!q.rows.length) return res.status(401).json({ error: 'Invalid credentials' });
 
       const user = q.rows[0];
       const ok = await bcrypt.compare(password, user.password_hash);
       if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-      const token = jwt.sign({ userId: user.id, role: 'customer', username: user.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      const token = jwt.sign(
+        { userId: user.id, role: 'customer', username: user.username },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+      );
       return res.json({ token, role: 'customer', username: user.username });
     }
 
-    // Otherwise try employee login (employees pre-registered)
-    const q2 = await db.query('SELECT id, username, password_hash FROM employees WHERE username=$1', [username]);
-    if (!q2.rows.length) return res.status(401).json({ error: 'Invalid credentials' });
+    // --- EMPLOYEE LOGIN ---
+    // inside router.post('/login', ...)
+    if (username) {
+      const q2 = await db.query('SELECT id, username, password_hash FROM employees WHERE username=$1', [username]);
+      if (!q2.rows.length) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const emp = q2.rows[0];
-    const ok2 = await bcrypt.compare(password, emp.password_hash);
-    if (!ok2) return res.status(401).json({ error: 'Invalid credentials' });
+      const emp = q2.rows[0];
+      const ok2 = await bcrypt.compare(password, emp.password_hash);
+      if (!ok2) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign({ userId: emp.id, role: 'employee', username: emp.username }, process.env.JWT_SECRET, { expiresIn: '2h' });
-    return res.json({ token, role: 'employee', username: emp.username });
+      const token = jwt.sign({ userId: emp.id, role: 'employee', username: emp.username }, process.env.JWT_SECRET, { expiresIn: '2h' });
+      return res.json({ token, role: 'employee', username: emp.username });
+    }
+
+
+    // Neither accountNumber nor username provided
+    return res.status(400).json({ error: 'Must provide accountNumber or username' });
+
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Server error' });

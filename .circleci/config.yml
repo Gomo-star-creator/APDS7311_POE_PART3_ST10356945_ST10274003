@@ -4,7 +4,7 @@ orbs:
   node: circleci/node@5.1.0
 
 jobs:
-  build-and-sonarqube:
+  build:
     docker:
       - image: cimg/node:20.11  # Node.js image with npm and yarn
       - image: sonarsource/sonar-scanner-cli:latest  # SonarQube scanner
